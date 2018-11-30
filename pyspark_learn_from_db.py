@@ -10,11 +10,14 @@ spark = SparkSession \
 
 ## DATABASE: semantica, semapp.csdwhpr1
 # Local mode connection and extraction
+schetable = "carins.insurance_claims"
+#schetable = "semapp.fraud_data_sample"
+
 query = "select * from semapp.fraud_data_sample"
 df = spark.read \
     .format("jdbc") \
     .option("url", "jdbc:postgresql:postgres") \
-    .option("dbtable", "semapp.fraud_data_sample") \
+    .option("dbtable", schetable) \
     .option("user", "postgres") \
     .option("password", "postgresql") \
     .load()
