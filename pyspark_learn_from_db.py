@@ -1,15 +1,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import SQLContext
 
-# "bin/sqljdbc42.jar") 
+# Correct command to submit and satisfy dependencies in local mode:
+# $ spark-submit --packages org.postgresql:postgresql:42.1.4 pyspark_learn_from_db.py
 spark = SparkSession \
     .builder \
     .appName("Python Spark SQL basic example") \
-    .config("spark.driver.extraClassPath", "/almac/ignacio/spark-2.4.0-bin-hadoop2.7/jars/jdbc-postgresql.jar") \
     .getOrCreate()
 
-## DATABASE: semantica, csdwhpr1
-#url = "jdbc:sqlserver://15.10.154.77\csdwhpr1;database=semantica;user=ReportUser;password=ReportUser"
+## DATABASE: semantica, semapp.csdwhpr1
+# Local mode connection and extraction
 query = "select * from semapp.fraud_data_sample"
 df = spark.read \
     .format("jdbc") \
@@ -20,5 +20,3 @@ df = spark.read \
     .load()
 
 df.show()
-#df = spark.sql(query)
-#df.show()
