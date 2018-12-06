@@ -20,7 +20,7 @@ spark = SparkSession \
     .getOrCreate()
 
 # For Oracle SQL:
-# REMOTE_SPARK=xxx.xxx.xxx.xxx:7077
+# REMOTE_SPARK=yyy.yyy.yyy.yyy:7077
 # $ spark-submit --master spark://$REMOTE_SPARK --jars C:\path\to\spark-2.2.1-bin-hadoop2.7\jars\ojdbc7.jar sql_server_test.py 
 
 df = spark.read.jdbc(url=jdbcUrl, table=jdbcDatabase, properties=connectionProperties)
