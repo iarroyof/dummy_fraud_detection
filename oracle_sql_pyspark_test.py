@@ -1,10 +1,12 @@
 from pyspark.sql import SparkSession
 
-
+# Get serviceName from the database:
+# SELECT sys_context('USERENV', 'SERVICE_NAME') FROM DUAL;
+serviceName = "DWHPR1"
 jdbcHostname = "xxx.xxx.xxx.xxx"
 jdbcDatabase = "schema.table"
 jdbcPort = "1521"
-jdbcUrl = "jdbc:oracle:thin:@//{0}:{1}/DWHPR1".format(jdbcHostname,jdbcPort)
+jdbcUrl = "jdbc:oracle:thin:@//{0}:{1}/{2}".format(jdbcHostname, jdbcPort, serviceName)
 jdbcUsername='user'
 jdbcPassword='pass'
 connectionProperties = {
