@@ -1,4 +1,8 @@
+https://www.analyticsvidhya.com/blog/2017/03/imbalanced-classification-problem/
 http://b-ok.org/book/2153118/4fc49a
 https://towardsdatascience.com/dealing-with-imbalanced-classes-in-machine-learning-d43d6fa19d2
 https://machinelearningmastery.com/tactics-to-combat-imbalanced-classes-in-your-machine-learning-dataset/
 https://towardsdatascience.com/shortcoming-of-under-sampling-algorithms-ccmut-and-e-ccmut-10fd24f54852
+https://en.wikipedia.org/wiki/Stratified_sampling
+https://www.jeremyjordan.me/imbalanced-data/
+Hacer un clasificador tipo Glove para ponderar la funcion de costo para diferentes clases, segun su importancia (o imbalance)
