@@ -9,5 +9,5 @@ https://machinelearningmastery.com/tactics-to-combat-imbalanced-classes-in-your-
 https://towardsdatascience.com/shortcoming-of-under-sampling-algorithms-ccmut-and-e-ccmut-10fd24f54852
 https://en.wikipedia.org/wiki/Stratified_sampling
 https://www.jeremyjordan.me/imbalanced-data/
-Hacer un clasificador tipo Glove para ponderar la funcion de costo para diferentes clases, segun su importancia (o imbalance)
+Hacer un clasificador tipo Glove para ponderar la funcion de costo para diferentes clases, segun su importancia (cost-sensitive learning)
 https://sci2s.ugr.es/imbalanced
