@@ -1,1 +1,4 @@
 http://b-ok.org/book/2153118/4fc49a
+https://towardsdatascience.com/dealing-with-imbalanced-classes-in-machine-learning-d43d6fa19d2
+https://machinelearningmastery.com/tactics-to-combat-imbalanced-classes-in-your-machine-learning-dataset/
+https://towardsdatascience.com/shortcoming-of-under-sampling-algorithms-ccmut-and-e-ccmut-10fd24f54852
