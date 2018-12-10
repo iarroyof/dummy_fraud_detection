@@ -6,3 +6,4 @@ https://towardsdatascience.com/shortcoming-of-under-sampling-algorithms-ccmut-an
 https://en.wikipedia.org/wiki/Stratified_sampling
 https://www.jeremyjordan.me/imbalanced-data/
 Hacer un clasificador tipo Glove para ponderar la funcion de costo para diferentes clases, segun su importancia (o imbalance)
+https://sci2s.ugr.es/imbalanced
