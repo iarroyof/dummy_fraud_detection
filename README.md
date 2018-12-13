@@ -1,0 +1,2 @@
+# Fraud detection in credit card payments and auto insurance claims using PySpark
+Fraud detection classifier with the synthetic data for cridit card fraud called Paysim. In addition, two popular auto insurance fraud detection datasets are analyzed: the example of 1000 samples used in Databricks and the Oracle's example for outlier detection containing 15000 samples.  This example uses PySpark and it is prepared for large CSV file processing in standalone mode
