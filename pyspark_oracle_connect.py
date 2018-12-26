@@ -29,11 +29,7 @@ def get_auth(conn_info="connection.json", db_type="ORACLE", service="DWHPR1"):
 serviceName = "DWHPR1"
 jdbcDatabase = "DWHRAW.S_PEN_SOBREVIVENCIA"
 
-<<<<<<< HEAD
 auth = get_auth(conn_info="../connection.json", service=serviceName, db_type="ORACLE")
-=======
-auth = get_auth(service=serviceName, db_type="ORACLE")
->>>>>>> 6ca7821de4764b477d5cbb4a35e0842b77ffb2ce
 jdbcHostname = auth["ip"] 
 jdbcPort = auth["port"]
 jdbcUsername=auth['usr']
