@@ -1,0 +1,20 @@
+id,feature,sign,Coeff,id,feature,sign,Coeff
+1,incident severity,+,0.148386315,20,injury claim,-,0.106790746
+2,vehicle claim,+,0.111225226,21,incident type,-,0.086550657
+3,insured hobbies,+,0.082679114,22,number of vehicles involved,-,0.064239551
+4,umbrella limit,+,0.073343987,23,age,-,0.050460665
+5,total claim amount,+,0.064362177,24,collision type,-,0.042321677
+6,months as customer,+,0.061006576,25,capital-loss,-,0.030586626
+7,incident state,+,0.031801305,26,policy csl,-,0.020620957
+8,incident state,+,0.031801305,27,incident city,-,0.020507472
+9,witnesses,+,0.024642253,28,police report available,-,0.020419603
+10,auto model,+,0.017617429,29,insured occupation,-,0.018209386
+11,authorities contacted,+,0.015817463,30,incident hour of the day,-,0.01811521
+12,property claim,+,0.01416098,31,capital-gains,-,0.012809394
+13,policy deductable,+,0.013104544,32,policy annual premium,-,0.012294194
+14,bodily injuries,+,0.009439051,33,property damage,-,0.003004867
+15,policy state,+,0.008601002,34,auto year,-,0.000103378
+16,insured sex,+,0.006476591,,,,
+17,auto make,+,0.002144275,,,,
+18,insured relationship,+,0.001928741,,,,
+19,insured education level,+,0.000801104,,,,
