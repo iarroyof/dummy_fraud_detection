@@ -8,7 +8,6 @@ def get_auth(conn_info="connection.json", db_type="ORACLE", service="DWHPR1"):
         j = json.load(f)
         return {'usr': j[db_type][service]['USER'], 
                 'pass': j[db_type][service]['PASSWORD'],
-                # "URL": "jdbc:oracle:thin:@15.10.154.206:1521:DWHPR1"
                 'ip': j[db_type][service]['URL'].split(':')[3][1:],
                 'port': j[db_type][service]['URL'].split(':')[4],
                 'service':  j[db_type][service]['URL'].split(':')[5]}
@@ -30,7 +29,7 @@ def get_auth(conn_info="connection.json", db_type="ORACLE", service="DWHPR1"):
 serviceName = "DWHPR1"
 jdbcDatabase = "DWHRAW.S_PEN_SOBREVIVENCIA"
 
-auth = get_auth(service=serviceName, db_type="ORACLE")
+auth = get_auth(conn_info="../connection.json", service=serviceName, db_type="ORACLE")
 jdbcHostname = auth["ip"] 
 jdbcPort = auth["port"]
 jdbcUsername=auth['usr']
