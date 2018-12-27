@@ -1,9 +1,10 @@
 from pyspark.sql import SparkSession
+import pyspark.sql.functions as F
+import datetime
 import json
 
 
 def get_auth(conn_info="connection.json", db_type="ORACLE", service="DWHPR1"):
-
     with open(conn_info) as f:
         j = json.load(f)
         return {'usr': j[db_type][service]['USER'], 
@@ -13,21 +14,14 @@ def get_auth(conn_info="connection.json", db_type="ORACLE", service="DWHPR1"):
                 'service':  j[db_type][service]['URL'].split(':')[5]}
 
 
-
-#path="C:\\Users\\HCAOA911\\Desktop\\sqldeveloper-17.4.1.054.0712-no-jre\\sqldeveloper\\jdbc\\lib\\"
-#path="C:\\Users\\HCAOA911\\Music\\spark-2.2.1-bin-hadoop2.7\\jars\\"
-#path="C:\\Users\\HCAOA911\\Downloads\\JDBC_Driver_6.4_SQL_Server\\sqljdbc_6.4\\enu\\"
-#driver = "ojdbc7.jar"
-#driver = "ojdbc8.jar"
-#driver = "sqljdbc42.jar"
-#driver = "mssql-jdbc-6.4.0.jre8.jar"
-# TEST QUERY select * from DWHRAW.S_PEN_SOBREVIVENCIA where POLIZA_ID = '000291';
-# Credentials file
-# /Aplication/job/connection.json:
-# Get serviceName from the database:
-# SELECT sys_context('USERENV', 'SERVICE_NAME') FROM DUAL;
 serviceName = "DWHPR1"
-jdbcDatabase = "DWHRAW.S_PEN_SOBREVIVENCIA"
+#jdbcDatabase = "DWHRAW.S_PEN_SOBREVIVENCIA"
+jdbcDatabase = "DWHRAW.S_PENSIONES_CLIENTE"
+# Putting something like this when reading the database can serve as an initial filter making more 
+# efficient the treatment of the dataframe pointed to it.
+#init_query = "select CAST(FECHA_SEMESTRE1 as date) date_semestre1, * from {} as tmp".format(jdbcDatabase)
+init_query = "select * from {} where MUERTO IS NOT null".format(jdbcDatabase)
+
 
 auth = get_auth(conn_info="../connection.json", service=serviceName, db_type="ORACLE")
 jdbcHostname = auth["ip"] 
@@ -39,7 +33,8 @@ connectionProperties = {
   "user": jdbcUsername,
   "password": jdbcPassword,
   "dbtable": jdbcDatabase,
-  "driver" : "oracle.jdbc.driver.OracleDriver"
+  "driver" : "oracle.jdbc.driver.OracleDriver",
+  #"dbtable": init_query  # This filters the database at time of reading it
 }
 
 spark = SparkSession \
@@ -47,12 +42,21 @@ spark = SparkSession \
     .appName("Python Spark SQL basic example") \
     .getOrCreate()
 
-# For PostgreSQL:
-# $ spark-submit --packages org.postgresql:postgresql:42.1.4 pyspark_learn_from_db.py
+# A number of top rows for testing
+get_n = 1000
 
-df = spark.read.jdbc(url=jdbcUrl, table=jdbcDatabase, properties=connectionProperties)
-print(df.columns)
+date = datetime.datetime.strptime('2016-02-02', '%Y-%m-%d').date()
+
+df = spark.read.jdbc(url=jdbcUrl, 
+                     table=jdbcDatabase, 
+                     properties=connectionProperties).limit(get_n)
 df.createOrReplaceTempView("DATA")
-#query = "select * from DATA where NPOLIZA = '00074490'"
-query = "select * from DATA where POLIZA_ID = '000291'"
-spark.sql(query).show()
+#query = "select CAST(FECHA_SEMESTRE1 as date) date_semestre1, * from DATA as tmp"
+query = "select * from DATA where MUERTO IS NOT null"
+
+#df.select(["HSID_PENSIONES_CLIENTE", "ESTATUS", "CVE_ESTADO", "MUERTO"])
+
+df_x = spark.sql(query)
+df_x.select(["HSID_PENSIONES_CLIENTE", "ESTATUS", "CVE_ESTADO", "MUERTO"]).show()
+#df.filter(F.col('date_semestre1') == date).show()
+#df_x.show()
