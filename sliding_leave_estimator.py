@@ -1,7 +1,14 @@
+
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 import datetime
 import json
+
+
+def printc(s):
+    beg = '\x1b[6;30;42m'
+    end = '\x1b[0m'
+    print(beg + s + end)
 
 
 def get_auth(conn_info="connection.json", db_type="ORACLE", service="DWHPR1"):
@@ -14,27 +21,52 @@ def get_auth(conn_info="connection.json", db_type="ORACLE", service="DWHPR1"):
                 'service':  j[db_type][service]['URL'].split(':')[5]}
 
 
-serviceName = "DWHPR1"
 #jdbcDatabase = "DWHRAW.S_PEN_SOBREVIVENCIA"
+# Tal vez si el nombre del titular es diferente al del asegurado 
+# tenga cierta relevancia como feature
+LEAVE = "Death"
+leave = "MUERTO"
+remove = [
+	"CUENTA", 
+	"SSID_DATOS_NOMINA", 
+	"SSID_PENSIONES_CLIENTE", 
+	"NUMERO_SEGURO_SOCIAL",
+	"POLIZA",
+	"NUMERO_OFERTA",
+	"CURP",
+	"RFC",
+	"POLIZA_ID",
+	"CVE_TARJETA",
+	"EMAIL",
+	"CELULAR",
+	"CLIENTE_ID",
+	"HASH_CD",
+	"USR_MOD",
+	"NUM_EXTERIOR",
+	"CALLE",
+	"NOMBRE",
+	"NOMBRE_2",
+	"APELLIDO_MATERNO",
+	"APELLIDO_PATERNO",
+	"TELEFONO",
+	"DIRECCION",
+	"NOMBRE_TITULAR",
+	"NOMBRE_ASEGURADO",
+	"NUMERO_OFERTA",
+	"NUMERO_SEGURO_SOCIAL"
+	]
+pivot = "HSID_PENSIONES_CLIENTE"
 jdbcDatabase = "DWHRAW.S_PENSIONES_CLIENTE"
-# Putting something like this when reading the database can serve as an initial filter making more 
-# efficient the treatment of the dataframe pointed to it.
-#init_query = "select CAST(FECHA_SEMESTRE1 as date) date_semestre1, * from {} as tmp".format(jdbcDatabase)
-init_query = "select * from {} where MUERTO IS NOT null".format(jdbcDatabase)
-
+serviceName = "DWHPR1"
 
 auth = get_auth(conn_info="../connection.json", service=serviceName, db_type="ORACLE")
-jdbcHostname = auth["ip"] 
-jdbcPort = auth["port"]
-jdbcUsername=auth['usr']
-jdbcPassword=auth['pass']
-jdbcUrl = "jdbc:oracle:thin:@//{0}:{1}/{2}".format(jdbcHostname, jdbcPort, serviceName)
+
+jdbcUrl = "jdbc:oracle:thin:@//{0}:{1}/{2}".format(auth["ip"],  auth["port"],  auth["service"])
 connectionProperties = {
-  "user": jdbcUsername,
-  "password": jdbcPassword,
+  "user": auth['usr'],
+  "password": auth['pass'],
   "dbtable": jdbcDatabase,
   "driver" : "oracle.jdbc.driver.OracleDriver",
-  #"dbtable": init_query  # This filters the database at time of reading it
 }
 
 spark = SparkSession \
@@ -45,18 +77,53 @@ spark = SparkSession \
 # A number of top rows for testing
 get_n = 1000
 
-date = datetime.datetime.strptime('2016-02-02', '%Y-%m-%d').date()
-
-df = spark.read.jdbc(url=jdbcUrl, 
+dfa = spark.read.jdbc(url=jdbcUrl, 
                      table=jdbcDatabase, 
-                     properties=connectionProperties).limit(get_n)
-df.createOrReplaceTempView("DATA")
-#query = "select CAST(FECHA_SEMESTRE1 as date) date_semestre1, * from DATA as tmp"
-query = "select * from DATA where MUERTO IS NOT null"
+                     properties=connectionProperties)  #.limit(get_n)
 
-#df.select(["HSID_PENSIONES_CLIENTE", "ESTATUS", "CVE_ESTADO", "MUERTO"])
+jdbcDatabase = "DWHRAW.S_PEN_DATOS_NOMINA"
+dfb = spark.read.jdbc(url=jdbcUrl,
+                     table=jdbcDatabase,
+                     properties=connectionProperties)  #.limit(get_n)
 
-df_x = spark.sql(query)
-df_x.select(["HSID_PENSIONES_CLIENTE", "ESTATUS", "CVE_ESTADO", "MUERTO"]).show()
-#df.filter(F.col('date_semestre1') == date).show()
-#df_x.show()
+repeats = [ ]
+for f in dfa.columns:
+     if f in dfb.columns and f != pivot:
+         repeats.append(f)
+
+dfb = dfb.drop(*repeats)
+df = dfa.join(dfb, [pivot], "right")
+
+# Remove uninformative columns and putting label LEAVE = "Death"
+valids = [v for v in df.columns if not v in remove]
+df = df.select(valids).orderBy(pivot) \
+                      .withColumn(LEAVE, F.when(F.col(leave).isNull(), 0) \
+                                   .otherwise(1)
+                                   ).drop(leave)
+
+#dfp = df.filter(F.col("MUERTO").isNotNull())
+#dfn = df.filter(F.col("MUERTO").isNull())
+dfp = df.filter(F.col(LEAVE) == 1)
+dfn = df.filter(F.col(LEAVE) == 0)
+
+#df.createOrReplaceTempView("DATA")
+#dfp.createOrReplaceTempView("DATA")
+#dfn.createOrReplaceTempView("DATA")
+#query = "select * from DATA where {} is not null".format(leave)
+#df_p = spark.sql(query)
+
+#df.select(["HSID_PENSIONES_CLIENTE", "ESTATUS", "CVE_ESTADO", LEAVE]).show()
+df.show()
+
+# Verify dimensionality number of samples and class imbalance
+#N = float(df.count())
+#Np =  float(dfp.count())
+#Nn =  float(dfn.count())
+#printc("DF:\nDimensionality: {}\tNumber of samples: {}\n".format(len(df.columns), N))
+#printc("DF_POSITIVE CLASS:\nDimensionality: {}\tNumber of samples: {}\n".format(len(dfp.columns), Np))
+#printc("DF_NEGATIVE CLASS:\nDimensionality: {}\tNumber of samples: {}\n".format(len(dfn.columns), Nn))
+#printc("Class imbalance: P: {}% N: {}%".format(100 * Np / N, 100 * Nn / N))
+
+# Now generate windows
+# Verificar si existen varios registros para LEAVE = 0 y solo uno o pocos para LEAVE = 1
+
