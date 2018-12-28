@@ -1,6 +1,7 @@
 
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
+from itertools import chain
 import datetime
 import json
 
@@ -26,36 +27,51 @@ def get_auth(conn_info="connection.json", db_type="ORACLE", service="DWHPR1"):
 # tenga cierta relevancia como feature
 LEAVE = "Death"
 leave = "MUERTO"
+relation = "nomina"  # "voz", "todo"
+
 remove = [
+	"CALLE",
+	"CELULAR",
 	"CUENTA", 
+	"CURP",
+	"CVE_TARJETA",
 	"SSID_DATOS_NOMINA", 
 	"SSID_PENSIONES_CLIENTE", 
-	"NUMERO_SEGURO_SOCIAL",
-	"POLIZA",
 	"NUMERO_OFERTA",
-	"CURP",
 	"RFC",
-	"POLIZA_ID",
-	"CVE_TARJETA",
 	"EMAIL",
-	"CELULAR",
-	"CLIENTE_ID",
 	"HASH_CD",
 	"USR_MOD",
 	"NUM_EXTERIOR",
-	"CALLE",
 	"NOMBRE",
 	"NOMBRE_2",
 	"APELLIDO_MATERNO",
 	"APELLIDO_PATERNO",
 	"TELEFONO",
 	"DIRECCION",
-	"NOMBRE_TITULAR",
-	"NOMBRE_ASEGURADO",
 	"NUMERO_OFERTA",
 	"NUMERO_SEGURO_SOCIAL"
 	]
-pivot = "HSID_PENSIONES_CLIENTE"
+holder = "NOMBRE_TITULAR"
+insured = "NOMBRE_ASEGURADO"
+holder_insured = [holder, insured]
+hol_ins_col = "HolderEqInsured"
+pivots = {"hsid": ("HSID_PENSIONES_CLIENTE", "HSID_PENSIONES_CLIENTE"),
+	"client": ("CLIENTE_ID", "NUMERO_CLIENTE_ID"),
+	"policy": ("POLIZA", "POLIZA_ID"), 
+	"nucleo": ("NUCLEO", "NUCLEO_ID"),
+	"seguro": ("REGIMEN_SEG_SOCIAL", "REGIMEN_SEG_SOCIAL_ID")
+	}
+nomina = ["hsid", "policy", "nucleo", "seguro"]
+voz = ["client"]
+
+if relation == "nomina":
+    pivot = {k: pivots[k] for k in pivots if k in nomina}
+elif  relation == "voz":
+    pivot = {k: pivots[k] for k in pivots if k in voz}
+elif relation == "todo":
+    pivot = pivot
+
 jdbcDatabase = "DWHRAW.S_PENSIONES_CLIENTE"
 serviceName = "DWHPR1"
 
@@ -88,32 +104,36 @@ dfb = spark.read.jdbc(url=jdbcUrl,
 
 repeats = [ ]
 for f in dfa.columns:
-     if f in dfb.columns and f != pivot:
+     if f in dfb.columns and f not in list(chain(*pivot.values())):
          repeats.append(f)
 
 dfb = dfb.drop(*repeats)
-df = dfa.join(dfb, [pivot], "right")
+df = dfa.join(dfb, list(chain(*pivot.values()))[0], "right")
 
+printc("%s\n" % df.columns)
 # Remove uninformative columns and putting label LEAVE = "Death"
 valids = [v for v in df.columns if not v in remove]
-df = df.select(valids).orderBy(pivot) \
+df = df.select(valids).orderBy(list(chain(*pivot.values()))[0]) \
+                      .withColumn(hol_ins_col, 
+                                  F.when(F.col(holder) == F.col(insured), 1) \
+                                       .otherwise(0) 
+                                   ) \
                       .withColumn(LEAVE, F.when(F.col(leave).isNull(), 0) \
                                    .otherwise(1)
-                                   ).drop(leave)
+                                   ) \
+                      .drop(leave)# \
+                      #.drop(*holder_insured)
 
-#dfp = df.filter(F.col("MUERTO").isNotNull())
-#dfn = df.filter(F.col("MUERTO").isNull())
 dfp = df.filter(F.col(LEAVE) == 1)
 dfn = df.filter(F.col(LEAVE) == 0)
 
 #df.createOrReplaceTempView("DATA")
-#dfp.createOrReplaceTempView("DATA")
-#dfn.createOrReplaceTempView("DATA")
 #query = "select * from DATA where {} is not null".format(leave)
 #df_p = spark.sql(query)
 
-#df.select(["HSID_PENSIONES_CLIENTE", "ESTATUS", "CVE_ESTADO", LEAVE]).show()
-df.show()
+printc("%s" % df.columns)
+df.select(list(chain(*pivot.values())) + [holder, insured, hol_ins_col, LEAVE]).filter(F.col(hol_ins_col) == 0).show()
+#df.show()
 
 # Verify dimensionality number of samples and class imbalance
 #N = float(df.count())
