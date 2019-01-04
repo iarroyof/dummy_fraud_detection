@@ -17,25 +17,51 @@ def printc(s):
     print(beg + s + end)
 
 
+def get_feature_importances(model, featureNames=None, out_csv=None, top_n=20):
+    """Creates and saves dataframe with sorted signed feature importances learned
+    with logistic reggression model or any model with `.coefficients` attribute.
+    """
+    print("Feature importances")
+    print("Logistic Regression:")
+
+    coeff = model.coefficients.tolist()
+    if featureNames is None:
+        featureNames = range(len(coeff))
+    else:
+        assert len(featureNames) == len(coeff)  # Verify given features matching learned model coefficients
+        featureNames = [f.replace("Index", '') for f in featureNames]
+
+    lr_sorted_feature_weights = spark.createDataFrame(zip(featureNames, coeff), 
+                                    schema=['feature', 'coefficient'])\
+                                    .dropDuplicates()
+    p_weights = lr_sorted_feature_weights.filter(F.col("coefficient") > 0).orderBy("coefficient", ascending=False)
+    n_weights = lr_sorted_feature_weights.filter(F.col("coefficient") < 0).orderBy("coefficient")
+    lr_sorted_feature_weights = p_weights.union(n_weights)
+    lr_sorted_feature_weights.show(len(coeff), False)
+    if not out_csv is None:
+        lr_sorted_feature_weights.toPandas().to_csv(out_csv, header=True)
+
 def vectorizeData(df, labelsCol, weighClass=False, featsCol=None):
     """Creates dataset from spark DataFrame of mixed categorical and numerical
     features. The function returns only two columns 'label' and 'features'. The 
     input Spark dataframe is 'df'. The column name corresponding to the training 
     labels must be provided in 'labelsCol'."""
-    #if not weighClass is None:
-    assert labelsCol in df.columns  # 'weighClass' must be binary (0 or 1)
-
-    stringColList = [i[0] for i in df.dtypes if i[1] == 'string' if i[0] != labelsCol]
+    assert labelsCol in df.columns  # 'labelsCol' is not in df.columns
+    # Importantly: replace numerical values by zero and categorical values by "NONE" (string)
+    df = df.fillna(0).fillna("NONE")
+    stringColList = [i[0] for i in df.dtypes if (i[1] == 'string' and i[0] != labelsCol)]
     # Indexing categorical features (string types)
     indexedCategoricalCols = [categoricalCol + "Index" for categoricalCol in stringColList]
-    stages = [StringIndexer(inputCol = categoricalCol, outputCol = idx_categoricalCol) 
+    stages = [StringIndexer(inputCol=categoricalCol, 
+                            outputCol=idx_categoricalCol,
+                            ) 
                         for categoricalCol, idx_categoricalCol in zip(stringColList, 
                                                                    indexedCategoricalCols)]
     indexer = Pipeline(stages=stages)
     df = indexer.fit(df).transform(df)
 
     # Assembling indexed and numeric features
-    numericColList = [i[0] for i in df.dtypes if i[1] != 'string']
+    numericColList = [i[0] for i in df.dtypes if (i[1] != 'string' and i[0] != labelsCol)]
     assemblerInputs = indexedCategoricalCols + numericColList
     assembler = VectorAssembler(inputCols=assemblerInputs, 
                                 outputCol="features" if featsCol is None else featsCol)
@@ -45,55 +71,49 @@ def vectorizeData(df, labelsCol, weighClass=False, featsCol=None):
     df = labeller.transform(df).select(["features" if featsCol is None else featsCol, "label"])
 
     if weighClass:
-        from pyspark.sql.functions import when
         from sklearn.utils.class_weight import compute_class_weight as weigh
         labels = [int(i.label) for i in df.select('label').collect()]
         wC0, wC1 = list(weigh(class_weight='balanced', classes=[0.0, 1.0], y=labels))
-        return assemblerInputs, df.withColumn('weight', when(df.label==0.0, wC0).otherwise(wC1))
+        return assemblerInputs, df.withColumn('weight', F.when(df.label==0.0, wC0).otherwise(wC1))
     else:
         return assemblerInputs, df
 
 
 LEAVE = "Death"
-leave = "MUERTO"
-relation = "nomina"  # "voz", "todo"
-
+out_csv = "C:\\data\\banorte\\pensiones\\rdn_sample_pensiones_signed_feature_importances.csv"
 remove = [
-    "NOMBRE_TITULAR",
-    "NOMBRE_ASEGURADO",
+    "ESTATUS_IND"
     "HSID_PENSIONES_CLIENTE",
-    "HSID_PENSIONES_CLIENTE",
-    "CLIENTE_ID",
-    "NUMERO_CLIENTE_ID",
-    "POLIZA", 
-    "POLIZA_ID",
-    "REGIMEN_SEG_SOCIAL",
-    "REGIMEN_SEG_SOCIAL_ID",
+    "CARGA_DT",
+    "CEDULA",
     "COLONIA",
+    "COMENTARIO",
+    "CLIENTE_ID",
     "FECHA_PROCESO",
     "FECHA_EMISION",
     "FECHA_SOLICITUD",
     "FECHA_NACIMIENTO",
     "FECHA_INICIO_DERECHO",
-    "OBSERVACIONES",
     "FECHA_MOVIMIENTO",
     "FECHA_RESOLUCION",
     "FECHA_VIGENCIA",
     "FECHA_BAJA",
     "FECHA_ACTUALIZACION",
-    "CEDULA",
     "FECNAC_TITULAR",
-    "REGIMEN_SEG_SOCIAL",
-    "CLIENTE_ID",
     "ID_PAIS",
-    "CARGA_DT",
-    "VIG_INI_DT",
-    "VIG_FIN_DT",
-    "POLIZA_ID",
     "LOCALIDAD",
+    "NOMBRE_TITULAR",
+    "NOMBRE_ASEGURADO",
+    "NUMERO_CLIENTE_ID",
+    "OBSERVACIONES",
+    "POLIZA", 
+    "POLIZA_ID",
+    "REGIMEN_SEG_SOCIAL",
+    "REGIMEN_SEG_SOCIAL_ID",
     "RI",
-    "COMENTARIO",
-    "REGIMEN_SEG_SOCIAL_ID"
+    "REGIMEN_SEG_SOCIAL_ID",
+    "VIG_INI_DT",
+    "VIG_FIN_DT"
 ]
 
 
@@ -109,9 +129,10 @@ df = spark.read.format("csv")\
           .options(inferSchema=True, header=True)\
           .load(fileStore)
 valids = [v for v in df.columns if not v in remove]
-df = df.select(valids + [LEAVE])
+df = df.select(valids)
 
-inputs, df = vectorizeData(df=df, labelsCol=LEAVE)
+#printc("%s" % df.dtypes)
+inputs, df = vectorizeData(df=df,  labelsCol=LEAVE)
 train, test = df.randomSplit([0.7, 0.3], seed=12345)
 
 # Train Logistic Regression
@@ -124,3 +145,5 @@ evaluator = Evaluator()
 #predictions.select("prediction", "label", "features").show()
 # Evaluate the learned model
 print("Pensiones random deads Test %s: %f"    % (evaluator.getMetricName(), evaluator.evaluate(predictions)))
+# Print important features
+get_feature_importances(model=lr, featureNames=inputs, out_csv=out_csv)
