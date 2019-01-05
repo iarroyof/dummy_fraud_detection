@@ -17,10 +17,6 @@ spark = SparkSession \
 
 ## Commands and paths:
 ## spark-submit C:\Users\HCAOA911\Documents\PythonScripts\csv_toMLLIB.py 
-<<<<<<< HEAD
-## spark-submit --master spark://15.10.155.75:7077 C:\\Users\\HCAOA911\\Desktop\\data\\fraud_data_sample.csv
-=======
->>>>>>> 6ca7821de4764b477d5cbb4a35e0842b77ffb2ce
 ## in_file = "C:\\Users\\HCAOA911\\Desktop\\data\\PS_20174392719_1491204439457_log.csv"
 ## in_file = "../data/PS_20174392719_1491204439457_log.csv"
 ## in_file = "C:\\Users\\HCAOA911\\Desktop\\data\\fraud_data_sample.csv"
