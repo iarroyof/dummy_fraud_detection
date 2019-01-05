@@ -17,7 +17,7 @@ def printc(s):
     print(beg + s + end)
 
 
-def get_feature_importances(model, featureNames=None, out_csv=None, top_n=20):
+def print_feature_importances(model, featureNames=None, out_csv=None, top_n=20):
     """Creates and saves dataframe with sorted signed feature importances learned
     with logistic reggression model or any model with `.coefficients` attribute.
     """
@@ -31,15 +31,17 @@ def get_feature_importances(model, featureNames=None, out_csv=None, top_n=20):
         assert len(featureNames) == len(coeff)  # Verify given features matching learned model coefficients
         featureNames = [f.replace("Index", '') for f in featureNames]
 
-    lr_sorted_feature_weights = spark.createDataFrame(zip(featureNames, coeff), 
+    dfw = spark.createDataFrame(zip(featureNames, coeff), 
                                     schema=['feature', 'coefficient'])\
                                     .dropDuplicates()
-    p_weights = lr_sorted_feature_weights.filter(F.col("coefficient") > 0).orderBy("coefficient", ascending=False)
-    n_weights = lr_sorted_feature_weights.filter(F.col("coefficient") < 0).orderBy("coefficient")
-    lr_sorted_feature_weights = p_weights.union(n_weights)
-    lr_sorted_feature_weights.show(len(coeff), False)
+    p_weights = dfw.filter(F.col("coefficient") > 0).orderBy("coefficient", 
+                                                            ascending=False)
+    n_weights = dfw.filter(F.col("coefficient") < 0).orderBy("coefficient")
+    dfw = p_weights.union(n_weights)
+
+    dfw.show(len(coeff), False)
     if not out_csv is None:
-        lr_sorted_feature_weights.toPandas().to_csv(out_csv, header=True)
+        dfw.toPandas().to_csv(out_csv, header=True)
 
 def vectorizeData(df, labelsCol, weighClass=False, featsCol=None):
     """Creates dataset from spark DataFrame of mixed categorical and numerical
@@ -80,7 +82,8 @@ def vectorizeData(df, labelsCol, weighClass=False, featsCol=None):
 
 
 LEAVE = "Death"
-out_csv = "C:\\data\\banorte\\pensiones\\rdn_sample_pensiones_signed_feature_importances.csv"
+#out_csv = "C:\\data\\banorte\\pensiones\\rdn_sample_pensiones_signed_feature_importances.csv"
+out_csv = None
 remove = [
     "ESTATUS_IND"
     "HSID_PENSIONES_CLIENTE",
@@ -116,22 +119,20 @@ remove = [
     "VIG_FIN_DT"
 ]
 
-
 spark = SparkSession \
     .builder \
     .appName("Python Spark SQL basic example") \
     .getOrCreate()
-
-
+spark.sparkContext.setLogLevel('WARN')
+# Input CSV dataset
 fileStore = sys.argv[1]
 
 df = spark.read.format("csv")\
           .options(inferSchema=True, header=True)\
           .load(fileStore)
 valids = [v for v in df.columns if not v in remove]
-df = df.select(valids)
+df = df.select(valids)  # + [LEAVE])
 
-#printc("%s" % df.dtypes)
 inputs, df = vectorizeData(df=df,  labelsCol=LEAVE)
 train, test = df.randomSplit([0.7, 0.3], seed=12345)
 
@@ -146,4 +147,4 @@ evaluator = Evaluator()
 # Evaluate the learned model
 print("Pensiones random deads Test %s: %f"    % (evaluator.getMetricName(), evaluator.evaluate(predictions)))
 # Print important features
-get_feature_importances(model=lr, featureNames=inputs, out_csv=out_csv)
+print_feature_importances(model=lr, featureNames=inputs, out_csv=out_csv)
